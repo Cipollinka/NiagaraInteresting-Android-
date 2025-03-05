@@ -1,8 +1,8 @@
 import React from 'react';
-import InterestingNiagaraStack from './StackNavigator';
+import AppManager from './src/AppManager';
 
 function App() {
-  return <InterestingNiagaraStack />;
+  return <AppManager />;
 }
 
 export default App;
