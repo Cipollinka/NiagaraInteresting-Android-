@@ -1,5 +1,5 @@
 import React, {useEffect, useRef, useState} from 'react';
-import {Linking} from 'react-native';
+import {Alert, Linking} from 'react-native';
 
 import Storage from './Storage';
 import EventManager from './EventsManager';
@@ -35,7 +35,6 @@ export default function AppManager() {
 
   // генеруємо унікальний ID користувача
   async function getUserID() {
-    console.log('generate UserID');
     const val = await Storage.get('userID');
     if (val) {
       userID.current = val; // додаємо збережений userID
@@ -45,8 +44,9 @@ export default function AppManager() {
       for (let i = 0; i < 7; i++) {
         result += Math.floor(Math.random() * 10);
       }
-      await Storage.save('userID', result); // зберігаємо userID
-      userID.current = result;
+      userID.current = '' + new Date().getTime() + '-' + result;
+      // Alert.alert(userID.current);
+      await Storage.save('userID', userID.current); // зберігаємо userID
     }
   }
 
@@ -54,11 +54,11 @@ export default function AppManager() {
   async function getAdID() {
     console.log('get gaid');
     ReactNativeIdfaAaid.getAdvertisingInfoAndCheckAuthorization(true).then(
-      res => {
-        // обробляємо клік в алерт
-        adID.current = res.id ? res.id : '00000000-0000-0000-0000-000000000000'; // отримуємо advertising id
-        initAppManager();
-      },
+        res => {
+          // обробляємо клік в алерт
+          adID.current = res.id ? res.id : '00000000-0000-0000-0000-000000000000'; // отримуємо advertising id
+          initAppManager();
+        },
     );
   }
 
@@ -94,34 +94,34 @@ export default function AppManager() {
       }
     });
     OneSignal.User.addTag(
-      'timestamp_user_id',
-      `${new Date().getTime()}_${userID.current}`,
+        'timestamp_user_id',
+        userID.current,
     ); // додаємо тег унікального користувача
   }
 
   const onInstallConversionDataCanceller = appsFlyer.onInstallConversionData(
-    res => {
-      console.log('get appsflyer attribution', res);
-      try {
-        if (JSON.parse(res.data.is_first_launch) === true) {
-          if (res.data.af_status === 'Non-organic') {
-            if (res.data.campaign.toString().includes('_')) {
-              subsRef.current = res.data.campaign;
-              appendParams.current = 'NON-ORGANIC';
+      res => {
+        console.log('get appsflyer attribution', res);
+        try {
+          if (JSON.parse(res.data.is_first_launch) === true) {
+            if (res.data.af_status === 'Non-organic') {
+              if (res.data.campaign.toString().includes('_')) {
+                subsRef.current = res.data.campaign;
+                appendParams.current = 'NON-ORGANIC';
+              }
+              else {
+                appendParams.current = 'CONVERT-SUBS-MISSING-SPLITTER';
+              }
+            } else {
+              appendParams.current = 'ORGANIC';
             }
-            else {
-              appendParams.current = 'CONVERT-SUBS-MISSING-SPLITTER';
-            }
-          } else {
-            appendParams.current = 'ORGANIC';
+            generateFinish();
           }
-          generateFinish();
+        } catch (err) {
+          console.log(err);
+          loadGame();
         }
-      } catch (err) {
-        console.log(err);
-        loadGame();
-      }
-    },
+      },
   );
 
   // генеруємо фінальну лінку яку будемо загружати в вебвʼю
@@ -130,12 +130,12 @@ export default function AppManager() {
     OneSignal.User.getOnesignalId().then(res => {
       onesignalID.current = res;
       dataLoad.current =
-        Params.bodyLin +
-        `?${Params.bodyLin.split('space/')[1]}=1&appsID=${
-          appsID.current
-        }&adID=${adID.current}&onesignalID=${onesignalID.current}&deviceID=${
-          deviceID.current
-        }&userID=${deviceID.current}${generateSubs()}${appendParams.current ? `&info=${appendParams.current}` : ''}` + '&timestamp=' + new Date().getTime() + '_' + userID.current;
+          Params.bodyLin +
+          `?${Params.bodyLin.split('space/')[1]}=1&appsID=${
+              appsID.current
+          }&adID=${adID.current}&onesignalID=${onesignalID.current}&deviceID=${
+              deviceID.current
+          }&userID=${deviceID.current}${generateSubs()}${appendParams.current ? `&info=${appendParams.current}` : ''}` + '&timestamp=' + userID.current;
       console.log(dataLoad.current);
       Storage.save('link', dataLoad.current);
       openAppManagerView(true, false);
@@ -162,8 +162,8 @@ export default function AppManager() {
       return '';
     }
     const subParams = subList
-      .map((sub, index) => `sub_id_${index + 1}=${sub}`)
-      .join('&');
+        .map((sub, index) => `sub_id_${index + 1}=${sub}`)
+        .join('&');
 
     return `&${subParams}`;
   }
@@ -269,8 +269,8 @@ export default function AppManager() {
   }, []);
 
   return !isLoadingScreen
-    ? isGameOpen
-      ? viewGame
-      : appManagerStack(dataLoad.current, userAgent.current)
-    : viewLoader;
+      ? isGameOpen
+          ? viewGame
+          : appManagerStack(dataLoad.current, userAgent.current)
+      : viewLoader;
 }
